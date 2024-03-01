@@ -10,7 +10,7 @@
 * <font size=10>We propose a novel metric to automatically to filter out the possible bad annotations, which is crucial to ensure the quality of an automatically annotated dataset. This metric is quite effective in reflecting the quality of the predictions during the construction of the dataset, where the ground truth is not available.</font>
 * <font size=10>Based on the above techniques, we construct a large-scale dataset, termed as MIML, with 123,150 manually forged images and pixel-level annotations denoting the forged regions. The MIML dataset can significantly improve the generalization of different forgery localization models especially on modern-style images.</font> <br/> <br/> <br/>
 
-<font size=10>We are confirmed that large-scale non-synthetic data is very important for deep image manipulation localization models. We hope that our methods and our dataset can shed light on the community and promote the real-world applications of deep image forensic models. </font><br/>
+<font size=10>We are confirmed that large-scale non-synthetic data is vital for deep image manipulation localization models. We sincerely hope that our methods and our dataset can shed light on the community and promote the real-world applications of deep image forensic models. </font><br/>
 
 
 <font size=10>This work is an initial attempt of automatic annotation for IML, futher improvements could be made. We are glad to witnessed the development of this field together with the community. </font><br/>
