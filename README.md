@@ -17,7 +17,7 @@
 
 ---
 
-### The release of the models and codes is ongoing and is expected to be completed within four months. <br/>
+### The release of the models and codes is ongoing and is expected to be completed within six months. <br/>
 
 ---
 
