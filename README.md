@@ -17,7 +17,7 @@
 
 ---
 
-### The Modern Image Manipulation Localization (MIML) dataset is now public available at . 
+### The Modern Image Manipulation Localization (MIML) dataset is now public available at Google Drive and [Baidu Drive](https://pan.baidu.com/s/1f6IpxTvBZNeFnvGMfURj1A?pwd=MIML). 
 
 ---
 
