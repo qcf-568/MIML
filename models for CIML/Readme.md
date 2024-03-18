@@ -7,7 +7,7 @@ The DASS model is available at Google Drive and [Baidu Drive](https://pan.baidu.
 The SAFM model is available at Google Drive and [Baidu Drive](https://pan.baidu.com/s/1PnLepP7bAd-8L5NcUGBx4A?pwd=SAFM).
 
 
-Commands to run the classifier:
+Commands to run the classifier to catogerize the image pairs into SPG or SDG:
 ```
 CUDA_VISIBLE_DEVICES=0 python classify_convxl.py
 ```
