@@ -1,3 +1,5 @@
+# The input of QES should be a soft mask prediction instead of a binarized one.
+
 import cv2
 import argparse
 import numpy as np
