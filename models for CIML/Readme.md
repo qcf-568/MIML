@@ -5,7 +5,7 @@
 ### This is the official implement of Category-Aware Auto-Annotation (CAAA)
 
 
-![CAAA](https://github.com/qcf-568/MIML/blob/main/models%20for%20CIML/CAAA_OK.pdf)
+![CAAA](https://github.com/qcf-568/MIML/blob/main/models%20for%20CIML/CAAA_OK.png)
 
 
 The classifiers are available at Google Drive and [Baidu Drive](https://pan.baidu.com/s/1-NidYwgVZUA0Pi0KE3ngGw?pwd=conv).
