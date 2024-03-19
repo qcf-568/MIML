@@ -4,12 +4,15 @@
 
 ### This is the official implement of Category-Aware Auto-Annotation (CAAA)
 
+
+![CAAA](https://github.com/qcf-568/MIML/blob/main/models%20for%20CIML/CAAA_OK.pdf)
+
+
 The classifiers are available at Google Drive and [Baidu Drive](https://pan.baidu.com/s/1-NidYwgVZUA0Pi0KE3ngGw?pwd=conv).
 
 The DASS model is available at Google Drive and [Baidu Drive](https://pan.baidu.com/s/1lmksoTe2b2xObGkhUbd5-A?pwd=DASS).
 
 The SAFM model is available at Google Drive and [Baidu Drive](https://pan.baidu.com/s/1PnLepP7bAd-8L5NcUGBx4A?pwd=SAFM).
-
 
 
 
