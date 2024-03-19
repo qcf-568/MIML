@@ -2,13 +2,33 @@
 
 ---
 
-### This is the official implement of Category-Aware Auto-Annotation
+### This is the official implement of Category-Aware Auto-Annotation (CAAA)
 
 The classifiers are available at Google Drive and [Baidu Drive](https://pan.baidu.com/s/1-NidYwgVZUA0Pi0KE3ngGw?pwd=conv).
 
 The DASS model is available at Google Drive and [Baidu Drive](https://pan.baidu.com/s/1lmksoTe2b2xObGkhUbd5-A?pwd=DASS).
 
 The SAFM model is available at Google Drive and [Baidu Drive](https://pan.baidu.com/s/1PnLepP7bAd-8L5NcUGBx4A?pwd=SAFM).
+
+
+
+
+To leverage the CAAA for auto-annotation, you should first categorize the image pairs (each pair contains a forged image and its authentic image) into aligned SPG and SDG. Then construct the dir structure as follows:
+
+```
+        roots (dir of SPG or SDG pairs)
+            |
+            |---dir1
+            |     |----0.jpg (SDG authentic image)
+            |     |----1.jpg (SDG manipulated image)
+            |
+            |---dir2
+            |     |----0.jpg (SDG authentic image)
+            |     |----1.jpg (SDG manipulated image)
+            |
+ ```
+
+Then run the scripts for auto-annotation.
 
 
 Commands to run the classifier to catogerize the image pairs into SPG or SDG:
