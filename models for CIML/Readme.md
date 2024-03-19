@@ -1,5 +1,9 @@
 ### This part is under construction...
 
+---
+
+### This is the official implement of Category-Aware Auto-Annotation
+
 The classifiers are available at Google Drive and [Baidu Drive](https://pan.baidu.com/s/1-NidYwgVZUA0Pi0KE3ngGw?pwd=conv).
 
 The DASS model is available at Google Drive and [Baidu Drive](https://pan.baidu.com/s/1lmksoTe2b2xObGkhUbd5-A?pwd=DASS).
