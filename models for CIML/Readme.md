@@ -26,6 +26,7 @@ To leverage the CAAA for auto-annotation, you should first categorize the image 
             |     |----0.jpg (SDG authentic image)
             |     |----1.jpg (SDG manipulated image)
             |
+      ..........
  ```
 
 Then run the scripts for auto-annotation.
