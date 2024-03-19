@@ -19,12 +19,12 @@ To leverage the CAAA for auto-annotation, you should first categorize the image 
         roots (dir of SPG or SDG pairs)
             |
             |---dir1
-            |     |----0.jpg (SDG authentic image)
-            |     |----1.jpg (SDG manipulated image)
+            |     |----0.jpg (authentic image)
+            |     |----1.jpg (manipulated image)
             |
             |---dir2
-            |     |----0.jpg (SDG authentic image)
-            |     |----1.jpg (SDG manipulated image)
+            |     |----0.jpg (authentic image)
+            |     |----1.jpg (manipulated image)
             |
       ..........
  ```
