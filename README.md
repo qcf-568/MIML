@@ -25,7 +25,11 @@
 3. What's the purpose of requesting this dataset.
 ---
 
-### The release of the models and codes is ongoing. <br/>
+### Code release plan
+
+#### Evaluation code of CIML and IML: Within June, 2024
+#### Training code of CIML: Within Sep, 2024
+#### Training code of IML: Within 2024
 
 ---
 
