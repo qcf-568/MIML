@@ -149,10 +149,12 @@ model = model.cuda()
 model.eval()
 
 all_dict = {}
+SPG = []
+SDG = []
+NotAlignedSPG = []
 
 with torch.no_grad():
     for idx in tqdm(range(len(test_data))):
-      try:
         (imgs,auth,temp,flags) = test_data.__getitem__(idx)
         if flags:
             continue
@@ -160,9 +162,12 @@ with torch.no_grad():
         b,c = pred.shape
         pred = F.softmax(pred.reshape(b,c//2,2),dim=-1).cpu().numpy()
         all_dict[temp]=(auth, pred)
-      except:
-        print('ERROR')
-        continue
+        if ((pred[0,0,1]>0.5) and (pred[0,1,1]>0.5)): # SPG
+            SPG.append((auth, temp))
+        if ((pred[0,0,0]>0.5) and (pred[0,1,0]>0.5)): # SDG
+            SDG.append((auth, temp))
+        if ((pred[0,0,1]>0.5) and (pred[0,1,0]>0.5)): # NotAlignedSPG
+            NotAlignedSPG.append((auth, temp))
 
 with open('convxl_cls.pk','wb') as f:
     pickle.dump(all_dict, f)
