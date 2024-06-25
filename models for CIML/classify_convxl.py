@@ -44,15 +44,7 @@ from tqdm import tqdm
 
 class CVPR24EVALDataset(Dataset):
     def __init__(self, roots):
-        rs = os.path.join(roots, 'datas')
-        self.indexs = []
-        with open(os.path.join(roots, 'new_rcd.pk'), 'rb') as f:
-            fpk = pickle.load(f)
-        for k,v in tqdm(fpk.items()):
-            for vv in v[2]:
-                self.indexs.append((os.path.join(roots, v[1]), os.path.join(roots, vv)))
-        with open('dat.pk','wb') as f:
-            pickle.dump(self.indexs, f)
+        self.indexs = [(os.path.join(roots, d,'0.jpg'), os.path.join(roots, d,'1.jpg')) for d in os.listdir(roots)]
         self.roots = roots
         self.indexs.sort()
         self.lens = len(self.indexs)
