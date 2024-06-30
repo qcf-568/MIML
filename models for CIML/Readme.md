@@ -4,11 +4,11 @@
 ![CAAA](https://github.com/qcf-568/MIML/blob/main/models%20for%20CIML/CAAA_OK.png)
 
 
-The classifiers are available at Google Drive and [Baidu Drive](https://pan.baidu.com/s/1-NidYwgVZUA0Pi0KE3ngGw?pwd=conv).
+The classifiers are available at [Google Drive](https://drive.google.com/file/d/1OMGtuzqhjwcvDaP3OO1njPfAS_2s0vg8/view?usp=sharing) and [Baidu Drive](https://pan.baidu.com/s/1-NidYwgVZUA0Pi0KE3ngGw?pwd=conv).
 
-The DASS model is available at Google Drive and [Baidu Drive](https://pan.baidu.com/s/1lmksoTe2b2xObGkhUbd5-A?pwd=DASS).
+The DASS model is available at [Google Drive](https://drive.google.com/file/d/1PXL9e8XiRGlSIcGhhppLXJtVG2rdQh5a/view?usp=sharing) and [Baidu Drive](https://pan.baidu.com/s/1lmksoTe2b2xObGkhUbd5-A?pwd=DASS).
 
-The SAFM model is available at Google Drive and [Baidu Drive](https://pan.baidu.com/s/1PnLepP7bAd-8L5NcUGBx4A?pwd=SAFM).
+The SACM model is available at [Google Drive](https://drive.google.com/file/d/1_C5gATKv8Mh7SyKNE_ubSpXlEASkEYja/view?usp=sharing) and [Baidu Drive](https://pan.baidu.com/s/1PnLepP7bAd-8L5NcUGBx4A?pwd=SAFM).
 
 
 
