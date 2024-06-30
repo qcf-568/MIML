@@ -1,7 +1,3 @@
-### This part is under construction...
-
----
-
 ### This is the official implement of Category-Aware Auto-Annotation (CAAA)
 
 
