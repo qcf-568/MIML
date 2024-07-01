@@ -61,6 +61,6 @@ IoU Precision Recall F-score
 ---
 
 
-Uploading the code now...
+I'm working on a Colab Notebook for this code now...
 
 
