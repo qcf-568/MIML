@@ -33,6 +33,24 @@ The model is available at [Google Drive](https://drive.google.com/file/d/1fTFUnn
 ```
 
 ---
+#### Command for evaluation
+```
+CASIAv1:
+CUDA_VISIBLE_DEVICES=0 python casia1_infer.py --cfg apscnet.py --pth APSC-Net.pth
+
+NIST16:
+CUDA_VISIBLE_DEVICES=0 python nist_infer.py --cfg apscnet.py --pth APSC-Net.pth
+
+IMD20:
+CUDA_VISIBLE_DEVICES=0 python imd20_infer.py --cfg apscnet.py --pth APSC-Net.pth
+
+Columbia:
+CUDA_VISIBLE_DEVICES=0 python colu_infer.py --cfg apscnet.py --pth APSC-Net.pth
+
+Coverage:
+CUDA_VISIBLE_DEVICES=0 python cover_infer.py --cfg apscnet.py --pth APSC-Net.pth
+```
+---
 
 
 Uploading the code now...
