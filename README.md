@@ -33,4 +33,13 @@
 
 ---
 
+### Environment package version
+```
+Python3.9
+torch1.13.1+cu117
+mmcv==1.6.0
+mmcv-full==1.6.0
+```
+---
+
 <font size=10>Any question about this work please contact 202221012612@mail.scut.edu.cn.</font><br/>
