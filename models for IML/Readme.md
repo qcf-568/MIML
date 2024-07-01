@@ -11,6 +11,10 @@ The model is available at [Google Drive](https://drive.google.com/file/d/1fTFUnn
 ```
 -----this_dir
    |
+   -------Python files (e.g. apscnet.py)
+   |
+   -------APSC-Net.pth
+   |
    -------mmseg/...
    |
    -------mmcv_custom/...
