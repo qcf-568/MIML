@@ -51,8 +51,9 @@ Coverage:
 CUDA_VISIBLE_DEVICES=0 python cover_infer.py --cfg apscnet.py --pth APSC-Net.pth
 ```
 #### FInal output format of the inference code:
-
+```
 IoU Precision Recall F-score
+```
 ---
 
 
