@@ -27,7 +27,7 @@
 
 ### Code release plan
 
-#### Evaluation code of CIML and IML: Within June, 2024
+#### Evaluation code of CIML and IML: Within June, 2024 (Done)
 #### Training code of CIML: Within Sep, 2024
 #### Training code of IML: Within 2024
 
