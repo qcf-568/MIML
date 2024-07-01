@@ -43,3 +43,17 @@ mmcv-full==1.6.0
 ---
 
 <font size=10>Any question about this work please contact 202221012612@mail.scut.edu.cn.</font><br/>
+
+---
+
+### Cite this paper
+
+```
+@inproceedings{qu2024towards,
+  title={Towards Modern Image Manipulation Localization: A Large-Scale Dataset and Novel Methods},
+  author={Qu, Chenfan and Zhong, Yiwu and Liu, Chongyu and Xu, Guitao and Peng, Dezhi and Guo, Fengjun and Jin, Lianwen},
+  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
+  pages={10781--10790},
+  year={2024}
+}
+```
