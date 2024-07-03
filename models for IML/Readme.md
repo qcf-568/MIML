@@ -11,7 +11,7 @@ The model is available at [Google Drive](https://drive.google.com/file/d/1fTFUnn
 ```
 -----this_dir
    |
-   -------Python files (e.g. apscnet.py)
+   -------Python files of this dir (e.g. apscnet.py)
    |
    -------APSC-Net.pth
    |
@@ -20,20 +20,20 @@ The model is available at [Google Drive](https://drive.google.com/file/d/1fTFUnn
    -------mmcv_custom/...
    |
    -------test_data/
-                      |
-                      -------------CASIA1/
-                      |                         |
-                      |                         ---------imgs/
-                      |                         |
-                      |                         ---------masks/
-                      | 
-                      -------------Columbia/... (the same as CASIA1 dir)
-                      |
-                      -------------Coverage/... (the same as CASIA1 dir)
-                      |
-                      -------------NIST16/...  (the same as CASIA1 dir)
-                      |
-                      -------------IMD20/... (the same as CASIA1 dir)
+              |
+              -------------CASIA1/
+              |               |
+              |               ---------imgs/
+              |               |
+              |               ---------masks/
+              | 
+              -------------Columbia/... (the same as CASIA1 dir)
+              |
+              -------------Coverage/... (the same as CASIA1 dir)
+              |
+              -------------NIST16/...  (the same as CASIA1 dir)
+              |
+              -------------IMD20/... (the same as CASIA1 dir)
 ```
 
 ---
