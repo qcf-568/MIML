@@ -36,17 +36,19 @@
 ### Environment package version
 ```
 Python3.9
-torch1.13.1+cu117
+torch==1.13.1+cu117
 mmcv==1.6.0
 mmcv-full==1.6.0
 ```
+---
+#### A much more powerful V2 version of this work will be released in a few weeks. 
 ---
 
 <font size=10>Any question about this work please contact 202221012612@mail.scut.edu.cn.</font><br/>
 
 ---
 
-### Cite this paper
+### Reference
 
 ```
 @inproceedings{qu2024towards,
