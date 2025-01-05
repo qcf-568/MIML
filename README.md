@@ -29,7 +29,9 @@
 
 #### Evaluation code of CIML and IML: Within June, 2024 (Done)
 #### Training code of CIML: Within Sep, 2024 (Done)
-#### Training code of IML: Within 2024
+#### Training code of IML: Within 2024 (Done)
+
+If you find any bug or question, please report it to me.
 
 ---
 
