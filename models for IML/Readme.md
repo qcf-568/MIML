@@ -59,8 +59,9 @@ CUDA_VISIBLE_DEVICES=0 python cover_infer.py --cfg apscnet.py --pth APSC-Net.pth
 IoU Precision Recall F-score
 ```
 ---
-
-
-I'm working on a Colab Notebook for this code now...
+#### Command for training
+```
+bash tools/dist_train.sh apscnet.py 8
+```
 
 
