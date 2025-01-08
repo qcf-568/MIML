@@ -22,7 +22,6 @@
 <font size=10>Researchers are welcome 😃 to apply for this dataset by sending an email to  202221012612@mail.scut.edu.cn (with institution email address) and explaining:</font><br/>
 1. Who you are and your institution.
 2. Who is your supervisor/mentor.
-3. What's the purpose of requesting this dataset.
 ---
 
 ### Code release plan
