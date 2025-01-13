@@ -40,6 +40,7 @@ Python3.9
 torch==1.13.1+cu117
 mmcv==1.6.0
 mmcv-full==1.6.0
+albumentations==1.3.1
 ```
 ---
 #### A much more powerful V2 version of this work will be released in a few weeks. 
