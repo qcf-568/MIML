@@ -75,6 +75,122 @@ class ResizeToMultiple(object):
         return repr_str
 
 @PIPELINES.register_module()
+class Albu:
+    """Albumentation augmentation.
+    Adds custom transformations from Albumentations library.
+    Please, visit `https://albumentations.readthedocs.io`
+    to get more information.
+    An example of ``transforms`` is as followed:
+    .. code-block::
+        [
+            dict(
+                type='ShiftScaleRotate',
+                shift_limit=0.0625,
+                scale_limit=0.0,
+                rotate_limit=0,
+                interpolation=1,
+                p=0.5),
+            dict(
+                type='RandomBrightnessContrast',
+                brightness_limit=[0.1, 0.3],
+                contrast_limit=[0.1, 0.3],
+                p=0.2),
+            dict(type='ChannelShuffle', p=0.1),
+            dict(
+                type='OneOf',
+                transforms=[
+                    dict(type='Blur', blur_limit=3, p=1.0),
+                    dict(type='MedianBlur', blur_limit=3, p=1.0)
+                ],
+                p=0.1),
+        ]
+    Args:
+        transforms (list[dict]): A list of albu transformations
+        bbox_params (dict): Bbox_params for albumentation `Compose`
+        keymap (dict): Contains {'input key':'albumentation-style key'}
+        skip_img_without_anno (bool): Whether to skip the image if no ann left
+            after aug
+    """
+    def __init__(self,
+                 transforms,
+                 bbox_params=None,
+                 keymap=None,
+                #  update_pad_shape=False,
+                 skip_img_without_anno=False):
+        if Compose is None:
+            raise RuntimeError('albumentations is not installed')
+
+        transforms = copy.deepcopy(transforms)
+        self.transforms = transforms
+        self.aug = Compose([self.albu_builder(t) for t in self.transforms],)
+
+    def albu_builder(self, cfg):
+        """Import a module from albumentations.
+        It inherits some of :func:`build_from_cfg` logic.
+        Args:
+            cfg (dict): Config dict. It should at least contain the key "type".
+        Returns:
+            obj: The constructed object.
+        """
+
+        assert isinstance(cfg, dict) and 'type' in cfg
+        args = cfg.copy()
+
+        obj_type = args.pop('type')
+        if mmcv.is_str(obj_type):
+            if albumentations is None:
+                raise RuntimeError('albumentations is not installed')
+            obj_cls = getattr(albumentations, obj_type)
+        elif inspect.isclass(obj_type):
+            obj_cls = obj_type
+        else:
+            raise TypeError(
+                f'type must be a str or valid type, but got {type(obj_type)}')
+        if 'transforms' in args:
+            args['transforms'] = [
+                self.albu_builder(transform)
+                for transform in args['transforms']
+            ]
+
+        return obj_cls(**args)
+
+    @staticmethod
+    def mapper(d, keymap):
+        """Dictionary mapper. Renames keys according to keymap provided.
+        Args:
+            d (dict): old dict
+            keymap (dict): {'old_key':'new_key'}
+        Returns:
+            dict: new dict.
+        """
+
+        updated_dict = {}
+        for k, v in zip(d.keys(), d.values()):
+            new_k = keymap.get(k, k)
+            updated_dict[new_k] = d[k]
+        return updated_dict
+
+    def __call__(self, results):
+        res = deepcopy(results)
+        try:
+            seg_keys = results.get('seg_fields', [])
+            masks = []
+            for key in seg_keys:
+                masks.append(results[key])
+            augged = self.aug(image = results['img'], masks = masks)
+            results['img'] = augged['image']
+            for i, key in enumerate(seg_keys):
+                results[key] = augged['masks'][i]
+            return results
+        except:
+            traceback.print_exc()
+            return res
+
+    def __repr__(self):
+        repr_str = self.__class__.__name__ + f'(transforms={self.transforms})'
+        return repr_str
+
+@PIPELINES.register_module()
 class RESIZE(object):
 
     def __init__(self,
