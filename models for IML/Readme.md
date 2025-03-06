@@ -65,6 +65,7 @@ bash tools/dist_train.sh apscnet.py 8
 ```
 #### Pre-trained weights for initilize before training
 The ADE-20k weights are downloaded from https://github.com/facebookresearch/ConvNeXt/tree/main/semantic_segmentation
+Just need to run the below 2 commands to get the "convnext_ade.pth"
 ```
 wget https://dl.fbaipublicfiles.com/convnext/ade20k/upernet_convnext_base_22k_640x640.pth
 python cvt_conv.py
