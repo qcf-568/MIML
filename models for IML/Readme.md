@@ -61,7 +61,7 @@ IoU Precision Recall F-score
 ---
 #### Command for training
 ```
-bash tools/dist_train.sh apscnet.py 8
+bash tools/dist_train.sh apscnet.py 10
 ```
 #### Pre-trained weights for initilize before training
 The ADE-20k weights are downloaded from https://github.com/facebookresearch/ConvNeXt/tree/main/semantic_segmentation
