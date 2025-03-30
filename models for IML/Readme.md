@@ -54,10 +54,39 @@ CUDA_VISIBLE_DEVICES=0 python colu_infer.py --cfg apscnet.py --pth APSC-Net.pth
 Coverage:
 CUDA_VISIBLE_DEVICES=0 python cover_infer.py --cfg apscnet.py --pth APSC-Net.pth
 ```
-#### FInal output format of the inference code:
+#### Final output format of the inference code:
 ```
 IoU Precision Recall F-score
 ```
+#### Training dataset preparation
+1. For each training dataset, prepare images and the corresponding masks. The masks should be normalized to 0-255 instead of 0-1. For example, if the mask is binary, 0 should represent authentic region and 255 should represent tampered region.
+2. Rename the images' filename suffix to '.jpg' and rename the masks' filename suffix to '.png'. The prefix should be the same for a pair of image and mask. For example, a mask should be named "1.png" for its corresponding image "1.jpg".
+
+3. Arrange the collected images and masks to below structure:
+```
+[Your dataset name, e.g. CASIA2]
+             |
+             ---------imgs
+             |         |
+             |         |---------1.jpg
+             |         |---------2.jpg
+             |
+             |--------masks
+                       |
+                       |---------1.png
+                       |---------2.png
+```
+For example, if the dataset name is CASIA2, all the images should be placed in 'CASIA2/imgs/' dir and all the masks should be placed in 'CASIA2/masks/' dir.
+4. Run the get_pks.py to get dataset pks, specify the args "--dataset" to your dataset path:
+```
+python get_pks.py --dataset [your dataset path, e.g. "normed/CASIA2"]
+```
+After that, you will get a dir named "pks/" and a pickle file (e.g. named "CASIA2.pk") in it. The "CASIA2.pk" is a list, each item is a pair of image and mask: {'filename': '1.jpg', 'ann': {'seg_map': '1.png'}}
+
+5. Add this dataset to the config file.
+For the above example, see [this line](https://github.com/qcf-568/MIML/blob/main/models%20for%20IML/apscnet.py#L120). The [img_dir](https://github.com/qcf-568/MIML/blob/main/models%20for%20IML/apscnet.py#L126) is the path of your images dir and the [ann_dir](https://github.com/qcf-568/MIML/blob/main/models%20for%20IML/apscnet.py#L127) is the path of their masks.
+Then add this dataset variable name to train/val/test list as [line 178](https://github.com/qcf-568/MIML/blob/main/models%20for%20IML/apscnet.py#L178).
+
 ---
 #### Command for training
 ```
