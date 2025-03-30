@@ -77,6 +77,7 @@ IoU Precision Recall F-score
                        |---------2.png
 ```
 For example, if the dataset name is CASIA2, all the images should be placed in 'CASIA2/imgs/' dir and all the masks should be placed in 'CASIA2/masks/' dir.
+
 4. Run the get_pks.py to get dataset pks, specify the args "--dataset" to your dataset path:
 ```
 python get_pks.py --dataset [your dataset path, e.g. "normed/CASIA2"]
