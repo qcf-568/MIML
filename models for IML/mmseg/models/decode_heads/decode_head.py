@@ -229,8 +229,12 @@ class BaseDecodeHead(BaseModule, metaclass=ABCMeta):
         Returns:
             dict[str, Tensor]: a dictionary of loss components
         """
-        seg_logits, embedding = self(inputs)
-        losses = self.losses(seg_logits, gt_semantic_seg, embedding)
+        si = self(inputs)
+        seg_logits, seg2, seg3 = self(inputs)
+        losses = self.losses(seg_logits, gt_semantic_seg)
+        losses.update(self.losses(seg3, gt_semantic_seg, addstr='aux_loss1'))
+        for i,s2 in enumerate(seg2):
+            losses.update(self.losses(s2, gt_semantic_seg, addstr='aux_loss2_%d'%i))
         return losses
 
     def forward_test(self, inputs, img_metas, test_cfg):
@@ -281,7 +285,8 @@ class BaseDecodeHead(BaseModule, metaclass=ABCMeta):
                 loss[loss_decode.loss_name+addstr] = loss_decode(seg_logit,seg_label,)
             else:
                 loss[loss_decode.loss_name+addstr] += loss_decode(seg_logit,seg_label,)
-
+        if not (addstr is None):
+            loss[loss_decode.loss_name+addstr] = loss[loss_decode.loss_name+addstr]/2.0
         loss['acc_seg'+addstr] = accuracy(
             seg_logit, seg_label, ignore_index=self.ignore_index)
         return loss
