@@ -367,7 +367,7 @@ class RESIZE(object):
                 results['scale'] = (976, 976)
                 img, w_scale, h_scale = mmcv.imresize(results['img'], results['scale'], return_scale=True)
             else:
-                hdr = imghdr.what(results['ori_filename'])
+                hdr = imghdr.what(results['filename'])
                 if ((a>262144) or (hdr!='jpeg')):
                     img = results['img']
                     w_scale = 1.0
