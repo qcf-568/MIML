@@ -37,10 +37,7 @@ If you find any bug or question, please report it to me.
 ### Environment package version
 ```
 Python3.9
-torch==1.13.1+cu117
-mmcv==1.6.0
-mmcv-full==1.6.0
-albumentations==1.3.1
+pip install torch==1.13.0 torchvision==0.14.0 mmcv=1.6.0 prettytable matplotlib timm einops numpy==1.26.4 albumentations==1.3.1
 ```
 ---
 #### A much more powerful V2 version of this work will be released in a few weeks. 
