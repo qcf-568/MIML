@@ -113,7 +113,10 @@ python cvt_conv.py
    c. delete the "verify=True". The result new line: "text, _ = FormatCode(text, style_config=yapf_style)"
 
 **2. Bug: ValueError: Cannot infer the rule for key F1score, thus a specific rule must be specified.**
-   Fix: replace the original evaluation.py in [your conda path]/lib/python3.xx/site-packages/mmcv/runner/hooks/evaluation.py with the evaluation.py in the dir. For example, run the command "cp evaluation.py /media/data2/chenfan/anaconda3/lib/python3.12/site-packages/mmcv/runner/hooks/evaluation.py"
+
+   Fix: replace the original evaluation.py in [your conda path]/lib/python3.xx/site-packages/mmcv/runner/hooks/evaluation.py with the evaluation.py in the dir. 
+   
+   For example, run the command "cp evaluation.py /media/data2/chenfan/anaconda3/lib/python3.12/site-packages/mmcv/runner/hooks/evaluation.py"
 
 ---
 
