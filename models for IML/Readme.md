@@ -88,6 +88,14 @@ After that, you will get a dir named "pks/" and a pickle file (e.g. named "CASIA
 For the above example, see [this line](https://github.com/qcf-568/MIML/blob/main/models%20for%20IML/apscnet.py#L120). The [img_dir](https://github.com/qcf-568/MIML/blob/main/models%20for%20IML/apscnet.py#L126) is the path of your images dir and the [ann_dir](https://github.com/qcf-568/MIML/blob/main/models%20for%20IML/apscnet.py#L127) is the path of their masks.
 Then add this dataset variable name to train/val/test list as [line 178](https://github.com/qcf-568/MIML/blob/main/models%20for%20IML/apscnet.py#L178).
 
+## Please Note
+
+In the config file such as [apscnet.py](https://github.com/qcf-568/MIML/blob/main/models%20for%20IML/apscnet.py), 
+
+the pipeline for the training data should be or be modified from 'tamper_comp' pipeline, as the [Line128](https://github.com/qcf-568/MIML/blob/main/models%20for%20IML/apscnet.py#L128)
+
+the pipeline for the evaluation data should be be modified from 'test_pipeline' pipeline, as the [Line172](https://github.com/qcf-568/MIML/blob/main/models%20for%20IML/apscnet.py#L172)
+
 ---
 #### Command for training
 ```
@@ -117,6 +125,10 @@ python cvt_conv.py
    Fix: replace the original evaluation.py in [your conda path]/lib/python3.xx/site-packages/mmcv/runner/hooks/evaluation.py with the evaluation.py in the dir. 
    
    For example, run the command "cp evaluation.py /media/data2/chenfan/anaconda3/lib/python3.12/site-packages/mmcv/runner/hooks/evaluation.py"
+
+**3. Bug: KeyError: 'ann_info' during evaluation.**
+
+   Fix: modify the pipeline for the test dataset from possible "tamper_comp" into "test_pipeline", as the "Please Note" section above. The "tamper_comp" pipeline is only for training set and the "test_pipeline" is only for evaluation set.
 
 ---
 
