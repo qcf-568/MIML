@@ -128,12 +128,13 @@ class CustomDataset(Dataset):
                 self.split = osp.join(self.data_root, self.split)
 
         # load annotations
-        if False:#self.loads:
+        if True:#self.loads:
             try:
                 with open('pks/'+self.nm+'.pk','rb') as fpk:
                     self.img_infos = pickle.load(fpk)
             except:
-                print('error',self.nm)
+                print('fatal error in dataset .pk file loading',self.nm)
+                exit(0)
         else:
             self.img_infos = self.load_annotations(self.img_dir, self.img_suffix,self.ann_dir,self.seg_map_suffix, self.split)
             with open('pks/'+self.nm+'.pk','wb') as fpk:
