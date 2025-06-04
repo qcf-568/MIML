@@ -1,291 +1,187 @@
 # Copyright (c) OpenMMLab. All rights reserved.
-import warnings
-from abc import ABCMeta, abstractmethod
-
 import torch
 import torch.nn as nn
-from mmcv.runner import BaseModule, auto_fp16, force_fp32
-
-from mmseg.core import build_pixel_sampler
+from mmcv.cnn import ConvModule
+from torch.nn import functional as F
+from .sep_aspp_head2 import DepthwiseSeparableASPPHead2
 from mmseg.ops import resize
-from ..builder import build_loss
-from ..losses import accuracy
+from ..builder import HEADS
+from .decode_head import BaseDecodeHead
+from .psp_head import PPM
+import scipy.stats as st
+
+def min_max_norm(in_):
+    max_ = in_.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(3).expand_as(in_)
+    min_ = in_.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(3).expand_as(in_)
+    in_ = in_ - min_
+    return in_.div(max_-min_+1e-8)
+
+class HeadAttn(nn.Module):
+    def __init__(self, conv_cfg, norm_cfg, act_cfg):
+        super(HeadAttn, self).__init__()
+        self.kg = nn.Sequential(nn.UpsamplingBilinear2d(size=(64,64)),
+            ConvModule(1, 32, 5, padding=2, stride=2, conv_cfg=conv_cfg, norm_cfg=norm_cfg, act_cfg=act_cfg), # 32
+            ConvModule(32, 64, 5, padding=2, stride=2, conv_cfg=conv_cfg, norm_cfg=norm_cfg, act_cfg=act_cfg), # 16
+            ConvModule(64, 128, 5, padding=2, stride=2, conv_cfg=conv_cfg, norm_cfg=norm_cfg, act_cfg=act_cfg), # 8
+            ConvModule(128, 256, 5, padding=2, stride=2, conv_cfg=conv_cfg, norm_cfg=norm_cfg, act_cfg=act_cfg), # 4
+            ConvModule(256, 512, 3, padding=1, stride=2, conv_cfg=conv_cfg, norm_cfg=norm_cfg, act_cfg=act_cfg), # 2
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(),
+            nn.Dropout(p=0.1),
+            nn.Linear(512, 961),
+        )
+
+    def forward(self, attn):
+        b = attn.size(0)
+        kg = self.kg(attn).reshape(b,1,31,31)
+        attn2 = torch.cat([F.conv2d(attn[i:i+1], kg[i:i+1], padding=15) for i in range(b)])
+        attn2 = min_max_norm(attn2)
+        return attn2.max(attn)
 
 
-class BaseDecodeHead(BaseModule, metaclass=ABCMeta):
-    """Base class for BaseDecodeHead.
+class SCSEModule(nn.Module):
+    def __init__(self, in_channels, reduction, conv_cfg, norm_cfg, act_cfg):
+        super().__init__()
+        self.cSE = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Conv2d(in_channels, in_channels // reduction, 1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_channels // reduction, in_channels, 1),
+            nn.Sigmoid(),
+        )
+        self.c11 = ConvModule(
+            2560,
+            2048,
+            1,
+            padding=0,
+            conv_cfg=conv_cfg,
+            norm_cfg=norm_cfg,
+            act_cfg=act_cfg)
 
-    Args:
-        in_channels (int|Sequence[int]): Input channels.
-        channels (int): Channels after modules, before conv_seg.
-        num_classes (int): Number of classes.
-        out_channels (int): Output channels of conv_seg.
-        threshold (float): Threshold for binary segmentation in the case of
-            `out_channels==1`. Default: None.
-        dropout_ratio (float): Ratio of dropout layer. Default: 0.1.
-        conv_cfg (dict|None): Config of conv layers. Default: None.
-        norm_cfg (dict|None): Config of norm layers. Default: None.
-        act_cfg (dict): Config of activation layers.
-            Default: dict(type='ReLU')
-        in_index (int|Sequence[int]): Input feature index. Default: -1
-        input_transform (str|None): Transformation type of input features.
-            Options: 'resize_concat', 'multiple_select', None.
-            'resize_concat': Multiple feature maps will be resize to the
-                same size as first one and than concat together.
-                Usually used in FCN head of HRNet.
-            'multiple_select': Multiple feature maps will be bundle into
-                a list and passed into decode head.
-            None: Only one select feature map is allowed.
-            Default: None.
-        loss_decode (dict | Sequence[dict]): Config of decode loss.
-            The `loss_name` is property of corresponding loss function which
-            could be shown in training log. If you want this loss
-            item to be included into the backward graph, `loss_` must be the
-            prefix of the name. Defaults to 'loss_ce'.
-             e.g. dict(type='CrossEntropyLoss'),
-             [dict(type='CrossEntropyLoss', loss_name='loss_ce'),
-              dict(type='DiceLoss', loss_name='loss_dice')]
-            Default: dict(type='CrossEntropyLoss').
-        ignore_index (int | None): The label index to be ignored. When using
-            masked BCE loss, ignore_index should be set to None. Default: 255.
-        sampler (dict|None): The config of segmentation map sampler.
-            Default: None.
-        align_corners (bool): align_corners argument of F.interpolate.
-            Default: False.
-        init_cfg (dict or list[dict], optional): Initialization config dict.
-    """
+    def forward(self, x):
+        return self.c11(x * self.cSE(x))
 
-    def __init__(self,
-                 in_channels,
-                 channels,
-                 *,
-                 num_classes,
-                 out_channels=None,
-                 threshold=None,
-                 dropout_ratio=0.1,
-                 conv_cfg=None,
-                 norm_cfg=None,
-                 act_cfg=dict(type='ReLU'),
-                 in_index=-1,
-                 input_transform=None,
-                 loss_decode=dict(
-                     type='CrossEntropyLoss',
-                     use_sigmoid=False,
-                     loss_weight=1.0),
-                 ignore_index=255,
-                 sampler=None,
-                 align_corners=False,
-                 init_cfg=dict(
-                     type='Normal', std=0.01, override=dict(name='conv_seg'))):
-        super(BaseDecodeHead, self).__init__(init_cfg)
-        self._init_inputs(in_channels, in_index, input_transform)
-        self.channels = channels
-        self.dropout_ratio = dropout_ratio
-        self.conv_cfg = conv_cfg
-        self.norm_cfg = norm_cfg
-        self.act_cfg = act_cfg
-        self.in_index = in_index
 
-        self.ignore_index = ignore_index
-        self.align_corners = align_corners
+@HEADS.register_module()
+class TestRFB1HA1CLab(BaseDecodeHead):
+    def __init__(self, pool_scales=(1, 2, 3, 6), **kwargs):
+        super(TestRFB1HA1CLab, self).__init__(
+            input_transform='multiple_select', **kwargs)
+        # PSP Module
+        self.psp_modules = PPM(
+            pool_scales,
+            self.in_channels[-1],
+            self.channels,
+            conv_cfg=self.conv_cfg,
+            norm_cfg=self.norm_cfg,
+            act_cfg=self.act_cfg,
+            align_corners=self.align_corners)
+        self.bottleneck = ConvModule(
+            self.in_channels[-1] + len(pool_scales) * self.channels,
+            self.channels,
+            3,
+            padding=1,
+            conv_cfg=self.conv_cfg,
+            norm_cfg=self.norm_cfg,
+            act_cfg=self.act_cfg)
+        self.avg = nn.AdaptiveAvgPool2d(1)
+        reduction = 8
+        self.SE1 = nn.Sequential(nn.Conv2d(1024, 1024 // reduction, 1),nn.ReLU(inplace=True),nn.Conv2d(1024 // reduction, 2, 1),nn.Sigmoid(),)
+        self.SE2 = nn.Sequential(nn.Conv2d(1536, 1536 // reduction, 1),nn.ReLU(inplace=True),nn.Conv2d(1536 // reduction, 3, 1),nn.Sigmoid(),)
+        self.SE3 = nn.Sequential(nn.Conv2d(2048, 2048 // reduction, 1),nn.ReLU(inplace=True),nn.Conv2d(2048 // reduction, 4, 1),nn.Sigmoid(),)
+        self.lateral_convs = nn.ModuleList()
+        self.fpn_convs = nn.ModuleList()
+        for in_channels in self.in_channels[:-1]:
+            l_conv = ConvModule(
+                in_channels,
+                self.channels,
+                1,
+                conv_cfg=self.conv_cfg,
+                norm_cfg=self.norm_cfg,
+                act_cfg=self.act_cfg,
+                inplace=False)
+            fpn_conv = ConvModule(
+                self.channels,
+                self.channels,
+                3,
+                padding=1,
+                conv_cfg=self.conv_cfg,
+                norm_cfg=self.norm_cfg,
+                act_cfg=self.act_cfg,
+                inplace=False)
+            self.lateral_convs.append(l_conv)
+            self.fpn_convs.append(fpn_conv)
 
-        if out_channels is None:
-            if num_classes == 2:
-                warnings.warn('For binary segmentation, we suggest using'
-                              '`out_channels = 1` to define the output'
-                              'channels of segmentor, and use `threshold`'
-                              'to convert seg_logist into a prediction'
-                              'applying a threshold')
-            out_channels = num_classes
+        self.MSDEC = DepthwiseSeparableASPPHead2(in_channels=2048,in_index=3,channels=512,dilations=(1, 12, 24, 36),c1_in_channels=256,c1_channels=48,dropout_ratio=0.1,num_classes=2,norm_cfg=dict(type='SyncBN', requires_grad=True),align_corners=False)
+        self.convert = nn.Conv2d(512,256,1,1,0)
+        self.ha = HeadAttn(self.conv_cfg, self.norm_cfg, self.act_cfg)
+        self.CE = SCSEModule(2560, 8, conv_cfg=self.conv_cfg, norm_cfg=self.norm_cfg, act_cfg=self.act_cfg)
+        self.ds = nn.UpsamplingBilinear2d(scale_factor=0.5)
+        self.maxp = nn.AdaptiveMaxPool2d(1)
+        self.cls_head = nn.Sequential(
+                ConvModule(3072, 512, 1, conv_cfg=self.conv_cfg, norm_cfg=self.norm_cfg, act_cfg=self.act_cfg, inplace=False),
+                nn.MaxPool2d(2,2),
+                ConvModule(512, 256, 3, padding=1, conv_cfg=self.conv_cfg, norm_cfg=self.norm_cfg, act_cfg=self.act_cfg, inplace=False),
+                nn.MaxPool2d(2,2),
+                ConvModule(256, 256, 3, padding=1, conv_cfg=self.conv_cfg, norm_cfg=self.norm_cfg, act_cfg=self.act_cfg, inplace=False),
+                nn.AdaptiveMaxPool2d(1),
+                nn.Dropout(p=0.2),
+                nn.Conv2d(256, 2, 1, 1, 0)
+        )
 
-        if out_channels != num_classes and out_channels != 1:
-            raise ValueError(
-                'out_channels should be equal to num_classes,'
-                'except binary segmentation set out_channels == 1 and'
-                f'num_classes == 2, but got out_channels={out_channels}'
-                f'and num_classes={num_classes}')
-
-        if out_channels == 1 and threshold is None:
-            threshold = 0.3
-            warnings.warn('threshold is not defined for binary, and defaults'
-                          'to 0.3')
-        self.num_classes = num_classes
-        self.out_channels = out_channels
-        self.threshold = threshold
-
-        if isinstance(loss_decode, dict):
-            self.loss_decode = build_loss(loss_decode)
-        elif isinstance(loss_decode, (list, tuple)):
-            self.loss_decode = nn.ModuleList()
-            for loss in loss_decode:
-                self.loss_decode.append(build_loss(loss))
-        else:
-            raise TypeError(f'loss_decode must be a dict or sequence of dict,\
-                but got {type(loss_decode)}')
-
-        if sampler is not None:
-            self.sampler = build_pixel_sampler(sampler, context=self)
-        else:
-            self.sampler = None
-
-        self.conv_seg = nn.Conv2d(channels, self.out_channels, kernel_size=1)
-        if dropout_ratio > 0:
-            self.dropout = nn.Dropout2d(dropout_ratio)
-        else:
-            self.dropout = None
-        self.fp16_enabled = False
-
-    def extra_repr(self):
-        """Extra repr."""
-        s = f'input_transform={self.input_transform}, ' \
-            f'ignore_index={self.ignore_index}, ' \
-            f'align_corners={self.align_corners}'
-        return s
-
-    def _init_inputs(self, in_channels, in_index, input_transform):
-        """Check and initialize input transforms.
-
-        The in_channels, in_index and input_transform must match.
-        Specifically, when input_transform is None, only single feature map
-        will be selected. So in_channels and in_index must be of type int.
-        When input_transform
-
-        Args:
-            in_channels (int|Sequence[int]): Input channels.
-            in_index (int|Sequence[int]): Input feature index.
-            input_transform (str|None): Transformation type of input features.
-                Options: 'resize_concat', 'multiple_select', None.
-                'resize_concat': Multiple feature maps will be resize to the
-                    same size as first one and than concat together.
-                    Usually used in FCN head of HRNet.
-                'multiple_select': Multiple feature maps will be bundle into
-                    a list and passed into decode head.
-                None: Only one select feature map is allowed.
-        """
-
-        if input_transform is not None:
-            assert input_transform in ['resize_concat', 'multiple_select']
-        self.input_transform = input_transform
-        self.in_index = in_index
-        if input_transform is not None:
-            assert isinstance(in_channels, (list, tuple))
-            assert isinstance(in_index, (list, tuple))
-            assert len(in_channels) == len(in_index)
-            if input_transform == 'resize_concat':
-                self.in_channels = sum(in_channels)
-            else:
-                self.in_channels = in_channels
-        else:
-            assert isinstance(in_channels, int)
-            assert isinstance(in_index, int)
-            self.in_channels = in_channels
-
-    def _transform_inputs(self, inputs):
-        """Transform inputs for decoder.
-
-        Args:
-            inputs (list[Tensor]): List of multi-level img features.
-
-        Returns:
-            Tensor: The transformed inputs
-        """
-
-        if self.input_transform == 'resize_concat':
-            inputs = [inputs[i] for i in self.in_index]
-            upsampled_inputs = [
-                resize(
-                    input=x,
-                    size=inputs[0].shape[2:],
-                    mode='bilinear',
-                    align_corners=self.align_corners) for x in inputs
-            ]
-            inputs = torch.cat(upsampled_inputs, dim=1)
-        elif self.input_transform == 'multiple_select':
-            inputs = [inputs[i] for i in self.in_index]
-        else:
-            inputs = inputs[self.in_index]
-
-        return inputs
-
-    @auto_fp16()
-    @abstractmethod
-    def forward(self, inputs):
-        """Placeholder of forward function."""
-        pass
-
-    def forward_train(self, inputs, img_metas, gt_semantic_seg, train_cfg):
-        """Forward function for training.
-        Args:
-            inputs (list[Tensor]): List of multi-level img features.
-            img_metas (list[dict]): List of image info dict where each dict
-                has: 'img_shape', 'scale_factor', 'flip', and may also contain
-                'filename', 'ori_shape', 'pad_shape', and 'img_norm_cfg'.
-                For details on the values of these keys see
-                `mmseg/datasets/pipelines/formatting.py:Collect`.
-            gt_semantic_seg (Tensor): Semantic segmentation masks
-                used if the architecture supports semantic segmentation task.
-            train_cfg (dict): The training config.
-
-        Returns:
-            dict[str, Tensor]: a dictionary of loss components
-        """
-        si = self(inputs)
-        seg_logits, seg2, seg3 = self(inputs)
-        losses = self.losses(seg_logits, gt_semantic_seg)
-        losses.update(self.losses(seg3, gt_semantic_seg, addstr='aux_loss1'))
-        for i,s2 in enumerate(seg2):
-            losses.update(self.losses(s2, gt_semantic_seg, addstr='aux_loss2_%d'%i))
-        return losses
-
-    def forward_test(self, inputs, img_metas, test_cfg):
-        """Forward function for testing.
-
-        Args:
-            inputs (list[Tensor]): List of multi-level img features.
-            img_metas (list[dict]): List of image info dict where each dict
-                has: 'img_shape', 'scale_factor', 'flip', and may also contain
-                'filename', 'ori_shape', 'pad_shape', and 'img_norm_cfg'.
-                For details on the values of these keys see
-                `mmseg/datasets/pipelines/formatting.py:Collect`.
-            test_cfg (dict): The testing config.
-
-        Returns:
-            Tensor: Output segmentation map.
-        """
-        return self.forward(inputs)[0]
-
-    def cls_seg(self, feat):
-        """Classify each pixel."""
-        if self.dropout is not None:
-            feat = self.dropout(feat)
-        output = self.conv_seg(feat)
+    def psp_forward(self, inputs):
+        x = inputs[-1]
+        psp_outs = [x]
+        psp_outs.extend(self.psp_modules(x))
+        psp_outs = torch.cat(psp_outs, dim=1)
+        output = self.bottleneck(psp_outs)
         return output
 
-    @force_fp32(apply_to=('seg_logit', ))
-    def losses(self, seg_logit, seg_label, embedding=None, addstr=''):
-        """Compute segmentation loss."""
-        loss = dict()
-        seg_logit = resize(
-            input=seg_logit,
-            size=seg_label.shape[2:],
-            mode='bilinear',
-            align_corners=self.align_corners)
-        if self.sampler is not None:
-            seg_weight = self.sampler.sample(seg_logit, seg_label)
-        else:
-            seg_weight = None
-        seg_label = seg_label.squeeze(1)
+    def forward(self, inputs):
+        inputs = self._transform_inputs(inputs)
+        laterals = [
+            lateral_conv(inputs[i])
+            for i, lateral_conv in enumerate(self.lateral_convs)
+        ]
 
-        if not isinstance(self.loss_decode, nn.ModuleList):
-            losses_decode = [self.loss_decode]
-        else:
-            losses_decode = self.loss_decode
-        for loss_decode in losses_decode:
-            if loss_decode.loss_name not in loss:
-                loss[loss_decode.loss_name+addstr] = loss_decode(seg_logit,seg_label,)
-            else:
-                loss[loss_decode.loss_name+addstr] += loss_decode(seg_logit,seg_label,)
+        laterals.append(self.psp_forward(inputs))
+        used_backbone_levels = len(laterals)
+        for i in range(used_backbone_levels - 1, 0, -1):
+            prev_shape = laterals[i - 1].shape[2:]
+            if i==3:
+                wt = self.SE1(torch.cat((self.avg(laterals[2]), self.avg(laterals[3])), 1))
+                laterals[2] = (wt[:,0:1] * laterals[2]) + (wt[:,1:2] * resize(laterals[3],size=prev_shape,mode='bilinear',align_corners=self.align_corners))
+            elif i==2:
+                wt = self.SE2(torch.cat((self.avg(laterals[1]), self.avg(laterals[2]), self.avg(laterals[3])), 1))
+                laterals[1] = (wt[:,0:1] * laterals[1]) + (wt[:,1:2] * resize(laterals[2],size=prev_shape,mode='bilinear',align_corners=self.align_corners))+ (wt[:,2:3] * resize(laterals[3],size=prev_shape,mode='bilinear',align_corners=self.align_corners))
+            elif i==1:
+                wt = self.SE3(torch.cat((self.avg(laterals[0]), self.avg(laterals[1]), self.avg(laterals[2]), self.avg(laterals[3])), 1))
+                laterals[0] = (wt[:,0:1] * laterals[0]) + (wt[:,1:2] * resize(laterals[1],size=prev_shape,mode='bilinear',align_corners=self.align_corners))+ (wt[:,2:3] * resize(laterals[2],size=prev_shape,mode='bilinear',align_corners=self.align_corners))+ (wt[:,3:4] * resize(laterals[3],size=prev_shape,mode='bilinear',align_corners=self.align_corners))
 
-        loss['acc_seg'+addstr] = accuracy(
-            seg_logit, seg_label, ignore_index=self.ignore_index)
-        return loss
+        fpn_outs = [
+            self.fpn_convs[i](laterals[i])
+            for i in range(used_backbone_levels - 1)
+        ]
+
+        fpn_outs.append(laterals[-1])
+        cls_aux = [self.cls_seg(fpn_outs[0])]
+        feat0 = self.convert(fpn_outs[0])
+        for i in range(used_backbone_levels - 1, 0, -1):
+            fpn_outs[i] = resize(fpn_outs[i], size=fpn_outs[1].shape[2:], mode='bilinear', align_corners=self.align_corners)
+        fpn_outs[0] = resize(fpn_outs[0], size=fpn_outs[1].shape[2:], mode='bilinear', align_corners=self.align_corners)
+        fpn_outs = torch.cat(fpn_outs, dim=1)
+        for cnt in range(3):
+            pos_map = F.interpolate(F.softmax(cls_aux[-1], dim=1)[:,1:2], scale_factor=0.5, mode='bilinear')
+            fpn_outs = (fpn_outs * self.ha(pos_map))
+            lab_outs, fpn_adds = self.MSDEC([feat0, fpn_outs], trans=False)
+            if cnt!=2:
+                cls_aux.append(lab_outs)
+                fpn_outs = self.CE(torch.cat((fpn_outs, fpn_adds), 1))
+        if self.training:
+            b,c,h,w = fpn_adds.shape
+            cpred = self.cls_head(torch.stack((fpn_adds, fpn_outs[:,:512], fpn_outs[:,512:1024], fpn_outs[:,1024:1536], fpn_outs[:,1536:2048], self.ds(F.softmax(lab_outs,dim=1)[:,1:2]).expand_as(fpn_adds)),2).reshape(b,c*6,h,w).detach())
+            return (lab_outs, cls_aux, cpred)# feats
+        else:
+            b,c,h,w = fpn_adds.shape
+            cpred = self.cls_head(torch.stack((fpn_adds, fpn_outs[:,:512], fpn_outs[:,512:1024], fpn_outs[:,1024:1536], fpn_outs[:,1536:2048], self.ds(F.softmax(lab_outs,dim=1)[:,1:2]).expand_as(fpn_adds)),2).reshape(b,c*6,h,w).detach())
+            return lab_outs, F.softmax(cpred,dim=1)[:,1:2].sq
