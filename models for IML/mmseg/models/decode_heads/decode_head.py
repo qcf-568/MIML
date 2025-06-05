@@ -5,7 +5,7 @@ from abc import ABCMeta, abstractmethod
 import torch
 import torch.nn as nn
 from mmcv.runner import BaseModule, auto_fp16, force_fp32
-
+from torch.nn import functional as F
 from mmseg.core import build_pixel_sampler
 from mmseg.ops import resize
 from ..builder import build_loss
@@ -230,11 +230,11 @@ class BaseDecodeHead(BaseModule, metaclass=ABCMeta):
             dict[str, Tensor]: a dictionary of loss components
         """
         si = self(inputs)
-        seg_logits, seg2, seg3 = self(inputs)
+        seg_logits, seg2 = self(inputs)
         losses = self.losses(seg_logits, gt_semantic_seg)
-        losses.update(self.losses(seg3, gt_semantic_seg, addstr='aux_loss1'))
+        # losses.update(self.losses(cls, F.adaptive_max_pool2d(gt_semantic_seg.float(), 1).long(), addstr='cls'))
         for i,s2 in enumerate(seg2):
-            losses.update(self.losses(s2, gt_semantic_seg, addstr='aux_loss2_%d'%i))
+            losses.update(self.losses(s2, gt_semantic_seg, addstr='aux_%d'%i))
         return losses
 
     def forward_test(self, inputs, img_metas, test_cfg):
