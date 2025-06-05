@@ -244,7 +244,7 @@ class VizEncoderDecoder(BaseSegmentor):
             output = F.sigmoid(seg_logit)
         else:
             output = F.softmax(seg_logit, dim=1)
-        if not ('/imd' in img_meta[0]['filename'].lower()):
+        if (not (cls_score is None)) and (not ('/imd' in img_meta[0]['filename'].lower())):
             thres = (1-cls_score).clamp(0.3,0.7)
         else:
             thres=0.5
