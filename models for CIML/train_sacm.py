@@ -23,7 +23,7 @@ import albumentations as A
 import torch.distributed as dist
 from albumentations.pytorch import ToTensorV2
 from torch.utils.data import Dataset, DataLoader
-import dmac_convb as dmac_vgg
+import safm_convb as dmac_vgg
 parser = argparse.ArgumentParser()
 parser.add_argument('--nm', type=str, default='ori')
 parser.add_argument('--epoch', type=int, default=1)
