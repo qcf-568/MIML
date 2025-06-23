@@ -47,7 +47,13 @@ pip install torch==1.13.0 torchvision==0.14.0 mmcv=1.6.0 prettytable matplotlib 
 
 ---
 
-### Reference
+### License
+
+The project is under [CC-BY-NC-4.0](https://www.creativecommons.org/licenses/by-nc/4.0/deed.en) license.
+
+---
+### Citation
+If you use the MIML dataset, CAAA method or the APSC-Net, please cite this paper.
 
 ```
 @inproceedings{qu2024towards,
