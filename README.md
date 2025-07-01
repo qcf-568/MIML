@@ -40,7 +40,7 @@ Python3.9
 pip install torch==1.13.0 torchvision==0.14.0 mmcv=1.6.0 prettytable matplotlib timm einops numpy==1.26.4 albumentations==1.3.1
 ```
 ---
-#### A much more powerful V2 version of this work will be released in a few weeks. 
+#### The much more powerful V2 version of this work is presented in [MIMLv2 dir](https://github.com/qcf-568/MIML/tree/main/MIMLv2). 
 ---
 
 <font size=10>Any question about this work please contact 202221012612@mail.scut.edu.cn.</font><br/>
