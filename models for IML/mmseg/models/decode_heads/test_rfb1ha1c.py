@@ -184,4 +184,4 @@ class TestRFB1HA1CLab(BaseDecodeHead):
         else:
             b,c,h,w = fpn_adds.shape
             cpred = self.cls_head(torch.stack((fpn_adds, fpn_outs[:,:512], fpn_outs[:,512:1024], fpn_outs[:,1024:1536], fpn_outs[:,1536:2048], self.ds(F.softmax(lab_outs,dim=1)[:,1:2]).expand_as(fpn_adds)),2).reshape(b,c*6,h,w).detach())
-            return lab_outs, F.softmax(cpred,dim=1)[:,1:2].sq
+            return lab_outs, F.softmax(cpred,dim=1)[:,1:2].squeeze()
