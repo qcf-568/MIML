@@ -2,7 +2,7 @@
 
 ### This is the official implementation of the paper Towards Modern Image Manipulation Localization: A Large-Scale Dataset and Novel Methods.  [paper](https://openaccess.thecvf.com/content/CVPR2024/papers/Qu_Towards_Modern_Image_Manipulation_Localization_A_Large-Scale_Dataset_and_Novel_CVPR_2024_paper.pdf)<br/>
 
-### The [version 2 paper](https://arxiv.org/pdf/2508.20987) is also released, [project repo](https://github.com/qcf-568/MIML/tree/main/MIMLv2) 
+### The [version 2 paper (Webly-Supervised Image Manipulation Localization)](https://arxiv.org/pdf/2508.20987) is also released, [project repo](https://github.com/qcf-568/MIML/tree/main/MIMLv2) 
 
 ---
 
