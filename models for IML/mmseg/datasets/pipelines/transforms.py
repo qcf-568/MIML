@@ -6,9 +6,12 @@ import random
 import mmcv
 import imghdr
 import numpy as np
+from pycocotools import mask as mask_utils
+from skimage import exposure
 from mmcv.utils import deprecated_api_warning, is_tuple_of
 from numpy import random
 from ..builder import PIPELINES
+
 
 from copy import deepcopy
 try:
@@ -17,6 +20,281 @@ try:
 except ImportError:
     albumentations = None
     Compose = None
+
+
+@PIPELINES.register_module()
+class COCO(object):
+    def __init__(self, prob=1.0, maxb=16, q1=75, q2=100, rgbshift=20, imgsize=512, exp=True) -> None:
+        assert 0 <= prob <= 1
+        self.q1 = q1
+        self.q2 = q2
+        self.exp = exp
+        self.p = prob
+        self.maxb = maxb
+        self.imgsize = imgsize
+        self.rgbshift = rgbshift
+        self.kernel = np.array([[0,-1,0],[-1,5,-1],[0,-1,0]],dtype=np.int32)
+
+    def revblur(self, img):
+        return cv2.filter2D(img,-1,kernel=self.kernel)
+
+    def calk(self, h):
+        if h<16:
+            return 1
+        elif h<32:
+            return 3
+        elif h<64:
+            return 5#random.choice((7,9))
+        elif h<128:
+            return 7#random.choice((9,11))
+        elif h<256:
+            return 9#random.choice((11,13))
+        else:
+            return 11
+
+    def edgefunc(self, img, box, mask, boxw, boxh, results):
+        # mask = mask_utils.decode(mask)[...,None]
+        # print('mask shape', mask.shape)
+        # assert len(mask.shape)==3, str(mask.shape)
+        # mask = mmcv.imrescale(mask, results['scale'], interpolation='nearest',backend='cv2')
+        # (crop_x1, crop_y1, crop_x2, crop_y2) = results['crop']
+        # mask = mask[crop_y1: crop_y2, crop_x1: crop_x2]
+        H,W = mask.shape
+        xnz, ynz = mask.nonzero()
+        xmin = (xnz.min())
+        ymin = (ynz.min())
+        xmax = (xnz.max())
+        ymax = (ynz.max())
+        ctx = (xmin+xmax)//2
+        cty = (ymin+ymax)//2
+        h = (xmax-xmin)
+        w = (ymax-ymin)
+        h8 = int(np.round(h/16))
+        w8 = int(np.round(w/16))
+        this_img = img[xmin:xmax, ymin:ymax]
+        this_area = mask[xmin:xmax, ymin:ymax]
+        nh = int(h+h8*2)
+        nw = int(w+w8*2)
+        new_img = cv2.resize(this_img, (nw, nh))
+        new_area = cv2.resize(this_area, (nw, nh)).astype(np.float32)
+        if xmin<=(h8):
+            dx1 = 0
+            nx1 = int(h8-xmin)
+        else:
+            dx1 = int(xmin-h8)
+            nx1 = 0
+        if ymin<=(w8):
+            dy1 = 0
+            ny1 = int(w8-ymin)
+        else:
+            dy1 = int(ymin-w8)
+            ny1 = 0
+        if (H-xmax)<=h8:
+            dx2 = H
+            nx2 = int(h8+xmax-H)
+        else:
+            dx2 = int(xmax+h8)
+            nx2 = 0*2
+        if (W-ymax)<=w8:
+            dy2 = W
+            ny2 = int(ymax+w8-W)
+        else:
+            dy2 = int(ymax+w8)
+            ny2 = 0
+        new_img = new_img[nx1:nh-nx2,ny1:nw-ny2]
+        new_area = new_area[nx1:nh-nx2,ny1:nw-ny2]
+        if random.uniform(0,1)>0.8:
+            ks = self.calk(min(boxw, boxh))
+            if (ks!=1):
+                new_area = cv2.GaussianBlur(new_area,(ks, ks),0)
+        new_area = new_area[...,None]
+        img[dx1:dx2,dy1:dy2] = (new_img * new_area) + (img[dx1:dx2,dy1:dy2] * (1 - new_area))
+        return img, new_area, (dx1, dx2, dy1, dy2)
+
+    def colorfunc(self, img, omask, boxw, boxh, results):
+        mask = mask_utils.decode(omask)
+        mask = mmcv.imresize(mask, results['scale'], interpolation='nearest',backend='cv2')
+        (crop_y1, crop_y2, crop_x1, crop_x2) = results['crop']
+        new_area = mask[crop_y1: crop_y2, crop_x1: crop_x2]
+        if random.uniform(0,1)>0.8:
+            ks = self.calk(min(boxw, boxh))
+            if (ks!=1):
+                new_area = cv2.GaussianBlur(new_area, (ks, ks),0)
+        # if random.uniform(0,1)>0.5:
+        #     gamma = random.uniform(2.0,3.0)
+        # else:
+        gamma = random.uniform(0.25,0.5)
+        new_area = new_area[...,None]
+        rands = random.uniform(0,1)
+        img = img*(1-new_area)+exposure.adjust_gamma(img, gamma=gamma)*new_area
+        return img, new_area
+    
+    def cvt_masks(self, masks, results):
+        rst = []
+        (crop_y1, crop_y2, crop_x1, crop_x2) = results['crop']
+        for mask in masks:
+            mask = mask_utils.decode(mask)
+            mask = mmcv.imresize(mask, results['scale'], interpolation='nearest',backend='cv2')
+            mask = mask[crop_y1: crop_y2, crop_x1: crop_x2]
+            assert mask.shape==(self.imgsize,self.imgsize)
+            rst.append(mask)
+        return np.stack(rst,0)
+
+    def see_masks(self, masks, results):
+        rst = []
+        for mask in masks:
+            mask = mask_utils.decode(mask)
+            rst.append(mask)
+        return np.stack(rst,0)
+
+    def box_inter(self, box1, box2):
+        lt = torch.max(box1[:,None,:2], box2[:,:2])  # [N,M,2]
+        rb = torch.min(box1[:,None,2:], box2[:,2:])  # [N,M,2]
+        wh = torch.clamp((rb-lt),min=0)      # [N,M,2]
+        inter = wh[:,:,0] * wh[:,:,1]  # [N,M]
+        return inter.squeeze(0)
+
+    def __call__(self, results):
+        # fnm = results['img_path'].split('/')[-1]
+        # cv2.imwrite('dmo_'+fnm, results['img'])
+        H,W = results['img_shape'][:2]
+        if results['flip']:
+            img1 = np.flip(results['img'],1)
+        else:
+            img1 = results['img']
+        img_shape = img1.shape
+        (crop_y1, crop_y2, crop_x1, crop_x2) = results['crop']
+        offset_h = crop_y1
+        offset_w = crop_x1
+        bboxes = torch.tensor(results['gt_bboxes'])
+        if results['flip']:
+            boxes = bboxes.clone()
+            bboxes[..., 0] = img_shape[1] - boxes[..., 2]
+            bboxes[..., 2] = img_shape[1] - boxes[..., 0]
+        bboxes = (bboxes * results['scale_factor'][None])
+        bboxes = bboxes + bboxes.new_tensor([-offset_w, -offset_h]).repeat(2)
+        bboxes[..., 0::2] = bboxes[..., 0::2].clamp(0, img_shape[1])
+        bboxes[..., 1::2] = bboxes[..., 1::2].clamp(0, img_shape[0])
+        valid_inds = ((bboxes[..., 0] < img_shape[1]) & (bboxes[..., 1] < img_shape[0]) & (bboxes[..., 2] > 0) & (bboxes[..., 3] > 0))
+        if (not valid_inds.any()):
+            assert False
+        bboxes = bboxes[valid_inds]
+        mask = [results['mask'][r] for r in valid_inds.nonzero().squeeze(1)]
+        boxw = (bboxes[:,2] - bboxes[:,0])
+        boxh = (bboxes[:,3] - bboxes[:,1])
+        # print('len1', len(mask), len(bboxes), len(valid_inds.nonzero().squeeze(1)))
+        seg_mask = np.zeros((self.imgsize, self.imgsize, 1),dtype=np.uint8)
+        valid = torch.bitwise_and(torch.bitwise_and(boxw>=8, boxh>=8), (boxw*boxh)>=256)
+        bboxes = bboxes[valid]
+        validnz = valid.nonzero()
+        if len(validnz)>0:
+            validnz = validnz.squeeze(1)
+        mask = [mask[v] for v in validnz]
+        boxw = boxw[valid]
+        boxh = boxh[valid]
+        # results['gt_bboxes_labels'] = results['gt_bboxes_labels'][valid]
+        lenb = len(bboxes)
+        # print('lenb', lenb)
+        if lenb==0:
+            assert False
+        if True:
+            useb = np.random.randint(0, lenb)
+            omask = mask_utils.decode(mask[useb])[...,None]
+            omask = mmcv.imresize(omask, results['scale'], interpolation='nearest',backend='cv2')
+            xnz, ynz = omask.nonzero()
+            assert (len(mask)==len(bboxes))
+            # print('max0',omask.max(), results['crop'], bboxes[useb], xnz.min(), xnz.max(), ynz.min(), ynz.max())
+            (crop_y1, crop_y2, crop_x1, crop_x2) = results['crop']
+            omask = omask[crop_y1: crop_y2, crop_x1: crop_x2]
+            if results['flip']:
+                omask = np.flip(omask,1)
+            # print('max',omask.max())
+            if (omask.max()!=0):
+                img1, new_area, (dx1, dx2, dy1, dy2) = self.edgefunc(img1, bboxes[useb], omask, boxw[useb], boxh[useb], results)
+                seg_mask[dx1: dx2, dy1: dy2] = (seg_mask[dx1: dx2, dy1: dy2] + (new_area>0.5).astype(np.uint8))
+                bboxes[useb] = torch.tensor((dy1, dx1, dy2, dx2), dtype=bboxes[useb].dtype)
+                bbox_inters = self.box_inter(bboxes[useb].unsqueeze(0), bboxes)
+                bbox_inters[useb] = 0
+                valid2 = (bbox_inters==0)
+                bboxes = bboxes[valid2]
+                validnz2 = valid2.nonzero()
+                if len(validnz2)>0:
+                    validnz2 = validnz2.squeeze(1)
+                mask = [mask[v] for v in validnz2]
+                boxw = boxw[valid2]
+                boxh = boxh[valid2]
+                # results['gt_bboxes_labels'] = results['gt_bboxes_labels'][valid2]
+                lenb = len(bboxes)
+                if ((lenb>8) and random.uniform(0,1)<0.5):
+                    thisb = np.random.randint(0, lenb)
+                    if (useb!=thisb):
+                        useb = thisb
+                        omask = mask_utils.decode(mask[useb])[...,None]
+                        omask = mmcv.imresize(omask, results['scale'], interpolation='nearest',backend='cv2')
+                        (crop_y1, crop_y2, crop_x1, crop_x2) = results['crop']
+                        omask = omask[crop_y1: crop_y2, crop_x1: crop_x2]
+                        if results['flip']:
+                            omask = np.flip(omask,1)
+                        if (omask.max()!=0):
+                            img1, new_area, (dx1, dx2, dy1, dy2) = self.edgefunc(img1, bboxes[useb], omask, boxw[useb], boxh[useb], results)
+                            seg_mask[dx1: dx2, dy1: dy2] = (seg_mask[dx1: dx2, dy1: dy2] + (new_area>0.5).astype(np.uint8))
+                            bboxes[useb] = torch.tensor((dy1, dx1, dy2, dx2), dtype=bboxes[useb].dtype)
+                            bbox_inters = self.box_inter(bboxes[useb].unsqueeze(0), bboxes)
+                            bbox_inters[useb] = 0
+                            valid2 = (bbox_inters==0)
+                            bboxes = bboxes[valid2]
+                            validnz2 = valid2.nonzero()
+                            if len(validnz2)>0:
+                                validnz2 = validnz2.squeeze(1)
+                            mask = [mask[v] for v in validnz2]
+                            boxw = boxw[valid2]
+                            boxh = boxh[valid2]
+                            # results['gt_bboxes_labels'] = results['gt_bboxes_labels'][valid2]
+                            lenb = len(bboxes)
+        if False:#random.uniform(0,1)<0.5:
+            mans = np.random.choice((1,2,3),size=1,p=(0.7,0.2,0.1))
+            mans = min(mans, lenb)
+            bidx = np.random.choice(lenb, size=mans, replace=False)
+            for idx in bidx:
+                img1, new_area = self.colorfunc(img1, mask[idx], boxw[idx], boxh[idx], results)
+                seg_mask = (seg_mask + (new_area>0.5).astype(np.uint8))
+        seg_mask = np.clip(seg_mask, 0, 1)
+        seg_mean = seg_mask.mean()
+        if ((seg_mean>0.75) or (seg_mean==0)):
+            assert False
+        if lenb>=self.maxb:
+            use_idx = np.random.choice(lenb, self.maxb, replace=False)
+            bboxes = bboxes[use_idx]
+            # mask = [mask[u] for u in use_idx]
+        # mask = self.cvt_masks(mask, results)
+        # dels = set()
+        '''
+        for mi,m in enumerate(mask):
+            if m.sum()<=16:
+                dels.add(mi)
+            else:
+                xnz, ynz = m.nonzero()
+                bbox[mi][1] = xnz.min()
+                bbox[mi][3] = xnz.max()
+                bbox[mi][0] = ynz.min()
+                bbox[mi][2] = ynz.max()
+        if (len(dels)!=0):
+            bboxes = [b for bi,b in enumerate(bbox) if not (bi in dels)]
+            if len(bboxes)!=0:
+                bbox = torch.stack(bboxes)
+                mask = np.stack([m for mi,m in enumerate(mask) if not (mi in dels)])
+            else:
+                bbox = torch.zeros((0,4))
+                mask = np.zeros((0,512,512))
+        '''
+        # img1 = F.shift_rgb(img1, random.randint(-self.rgbshift, self.rgbshift), random.randint(-self.rgbshift, self.rgbshift), random.randint(-self.rgbshift, self.rgbshift))
+        # img1 = cv2.imdecode(cv2.imencode('.jpg',img1,[1,random.randint(self.q1,self.q2)])[1],1)
+        results['img'] = img1
+        results['gt_bboxes'] = bboxes
+        results['gt_semantic_seg'] = seg_mask.squeeze(2)
+        fnm = results['filename'].split('/')[-1]
+        return results
+        
 
 @PIPELINES.register_module()
 class ResizeToMultiple(object):
