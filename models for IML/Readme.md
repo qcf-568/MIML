@@ -94,7 +94,9 @@ In the config file such as [apscnet.py](https://github.com/qcf-568/MIML/blob/mai
 
 the pipeline for the training data should be or be modified from 'tamper_comp' pipeline, as the [Line128](https://github.com/qcf-568/MIML/blob/main/models%20for%20IML/apscnet.py#L128)
 
-the pipeline for the evaluation data should be or be modified from 'test_pipeline' pipeline, as the [Line172](https://github.com/qcf-568/MIML/blob/main/models%20for%20IML/apscnet.py#L172)
+the pipeline for the evaluation data should be or be modified from 'test_pipeline' pipeline, as the [Line172](https://github.com/qcf-568/MIML/blob/main/models%20for%20IML/apscnet.py#L172).
+
+The [coco.pk](https://drive.google.com/file/d/13sBfOr7K_cMmGwHWikXo8fvmGmy8adtu/view?usp=sharing) contains annotations of the COCO2014 dataset.
 
 ---
 #### Command for training
