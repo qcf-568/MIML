@@ -2,8 +2,6 @@
 
 ### This is the official implementation of the paper Towards Modern Image Manipulation Localization: A Large-Scale Dataset and Novel Methods.  [paper](https://openaccess.thecvf.com/content/CVPR2024/papers/Qu_Towards_Modern_Image_Manipulation_Localization_A_Large-Scale_Dataset_and_Novel_CVPR_2024_paper.pdf)<br/>
 
-### The [version 2 paper (Webly-Supervised Image Manipulation Localization)](https://arxiv.org/pdf/2508.20987) is also released, [project repo](https://github.com/qcf-568/MIML/tree/main/MIMLv2) 
-
 ---
 
 ### The main contributions of this work are as follows:
@@ -40,6 +38,7 @@ If you find any bug or question, please report it to me.
 ```
 Python3.9
 pip install torch==1.13.0 torchvision==0.14.0 mmcv=1.6.0 prettytable matplotlib timm einops numpy==1.26.4 albumentations==1.3.1
+```
 
 ---
 
