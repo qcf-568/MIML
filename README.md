@@ -23,6 +23,9 @@
 <font size=10>Researchers are welcome 😃 to apply for this dataset by sending an email to  202221012612@mail.scut.edu.cn (with institution email address) and explaining:</font><br/>
 1. Who you are and your institution.
 2. Who is your supervisor/mentor.
+
+You can also apply for this dataset via http://121.41.49.212:9000/apply/miml
+
 ---
 
 ### Disclaimer
